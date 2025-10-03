@@ -80,9 +80,9 @@ I kept it like a personal diary so others can follow my journey mistakes, fixes,
   - Summed treatment costs.
   - Identified peak flu month and average costs.
  
-    ><img width="1002" height="549" alt="image" src="https://github.com/user-attachments/assets/28acffcd-ab96-4397-a0f9-246da24aa417" />
-
-><img width="991" height="543" alt="image" src="https://github.com/user-attachments/assets/83a2d51e-8247-4bbe-9f69-b80858fc8b31" />
+<img width="1002" height="549" alt="image" src="https://github.com/user-attachments/assets/28acffcd-ab96-4397-a0f9-246da24aa417" />
+---
+<img width="991" height="543" alt="image" src="https://github.com/user-attachments/assets/83a2d51e-8247-4bbe-9f69-b80858fc8b31" />
 
 ---
 
