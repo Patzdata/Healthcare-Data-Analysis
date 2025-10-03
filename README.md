@@ -1,5 +1,12 @@
 # Healthcare-Data-Analysis
 
+## Table of content
+* [ Project Overview](Project-Overview)
+* [Creating and Importing Data](Creating-and-Importing-Data)
+* [Cleaning Age](Cleaning-Age)
+* [Cleaning Gender](Cleaning-Gender)
+* [Cleaning Cost](Cleaning-Cost)
+
 ## Project Overview
 The financial planning department at a Rwandan clinic needs to forecast their budget. Since flu season significantly impacts patient visits and treatment costs, this project focuses on:
 
