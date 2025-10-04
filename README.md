@@ -6,6 +6,9 @@
 * [Cleaning Age](Cleaning-Age)
 * [Cleaning Gender](Cleaning-Gender)
 * [Cleaning Cost](Cleaning-Cost)
+* [ Cleaning Visit Date](Cleaning-Visit-Date)
+* [Cleaning Patient Names](Cleaning-Patient-Names)
+* [Analysis](Analysis)
 
 ## Project Overview
 The financial planning department at a Rwandan clinic needs to forecast their budget. Since flu season significantly impacts patient visits and treatment costs, this project focuses on:
@@ -77,7 +80,7 @@ I kept it like a personal diary so others can follow my journey mistakes, fixes,
   - Some names were all uppercase, some all lowercase.
 - Solution:
   - Converted names to **Proper Case** (first letter capitalized).
-  - Stored in `PatientName_Clean`.
+  - Stored as `PatientName_Clean`in 'patient_mapping' table.
 
 ---
 
@@ -95,11 +98,10 @@ I kept it like a personal diary so others can follow my journey mistakes, fixes,
 
 ## 💡 Lessons Learned
 - Always back up the raw table before cleaning.
-- Create new columns (`AgeClean`, `GenderClean`, etc.) — don’t overwrite originals.
+- Create new columns (`Age_Clean`, `Gender_Clean`, etc.) — don’t overwrite originals.
 - Functions (`fn_WordsToNumber`) are powerful for text → number conversions.
-- Also ProperCase that help capitized first words and make the rest lower case.
+- Also ProperCase function that help capitized first words and make the rest lower case.
 - TRY_CAST are lifesavers for validating data.
-- Documenting the process helps me see my mistakes and growth.
 
 ---
 
