@@ -250,7 +250,7 @@ ORDER BY Total_Flu_Cases DESC;
 ----- Checking the top 5 peak  where we spent on Flu diagnosis
 ------ In the month of April alone 5,859.88 being the highest Followed by August in year 2024
 
-SELECT TOP 1 [Year], [Month],Month_name,Totalt_Flu_Cost
+SELECT TOP 5 [Year], [Month],Month_name,Totalt_Flu_Cost
 
 FROM  (
 
