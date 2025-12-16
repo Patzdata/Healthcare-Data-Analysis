@@ -105,6 +105,278 @@ I kept it like a personal diary so others can follow my journey mistakes, fixes,
 
 ---
 
+' ------- Creating a database[Health_care] to be able to import my tables --------
+
+CREATE DATABASE Health_care;
+GO
+------- Inspecting and checking the data ------
+SELECT *
+FROM patient_record
+WHERE patient_id = 'P0845'; '
+
+
+'----- standardized and cleaning the age column of patient_record
+---- Start by adding a new age column
+ ALTER TABLE Patient_record
+ ADD Age_clean INT NULL;'
+
+' UPDATE Patient_record
+SET Age_clean =
+    CASE
+--if Age looks like a number then convert to an integer
+        WHEN TRY_CAST(Age AS INT) IS NOT NULL 
+             AND TRY_CAST(Age AS INT) BETWEEN 0 AND 120 
+             THEN TRY_CAST(Age AS INT);'
+
+' -- specific text cases (word like thirty-five)
+        WHEN LOWER(LTRIM(RTRIM(Age))) IN ('thirty-five','thirty five','thirtyfive')
+             THEN 35
+-- negative values or unrealistic high values
+        WHEN TRY_CAST(Age AS INT) IS NOT NULL 
+             AND (TRY_CAST(Age AS INT) < 0 OR TRY_CAST(Age AS INT) > 120)
+             THEN NULL
+-- anything else (unrecognized words, bad data)
+        ELSE NULL
+    END;
+GO'
+'------ Checking the Age Column to know how much of the data is messy.
+------- turn out we have 22,435 column of valid ages entered and 2,493 incorrect data age entered.
+SELECT 
+    SUM(CASE WHEN TRY_CAST(Age AS INT) IS NOT NULL 
+                  AND TRY_CAST(Age AS INT) BETWEEN 0 AND 120
+             THEN 1 ELSE 0 END) AS ValidAges,
+    SUM(CASE WHEN TRY_CAST(Age AS INT) IS NULL 
+                  OR TRY_CAST(Age AS INT) < 0 
+                  OR TRY_CAST(Age AS INT) > 120
+             THEN 1 ELSE 0 END) AS InvalidAges
+FROM dbo.patient_record;'
+ 
+' ----- standardized and cleaning the Gender rows of patient_record
+---- Start by adding a new Gender row and clean the column containing ?, blank,M,F 
+ 
+ ALTER TABLE Patient_record
+ ALTER COLUMN Gender_clean VARCHAR(50) NULL; ----- Did a mistake defining it by integer instead of text
+
+UPDATE patient_record
+SET Gender_clean = CASE 
+	 WHEN Gender IN ('M', 'Male') THEN 'Male'
+	 WHEN Gender IN ('F', 'Female') THEN 'Female'
+ELSE NULL
+END; '
+' ------ Checking the Gender Column to know how much of the data is messy.
+------- turn out we have 21,298 rows out  of 24928 rows valid data entered and 3,630 incorrect data age entered.
+SELECT 
+    SUM(CASE WHEN Gender IS NULL OR LTRIM(RTRIM(Gender)) = '' THEN 1 ELSE 0 END) AS NullCount,
+    SUM(CASE WHEN Gender IS NOT NULL AND LTRIM(RTRIM(Gender)) <> '' THEN 1 ELSE 0 END) AS GenderCount
+FROM dbo.patient_record;'
+
+'--------- standardized and cleaning the Cost row of patient_record
+---- Start by adding a new cost row and clean the column containing 1,250.00, free, error, missing, two hundred
+ALTER TABLE Patient_record
+ ADD Cost_clean DECIMAL(10, 2) NULL;
+ GO '
+' ----- Adding a function call fn_WordsToNumber_Cost to be able to convert words to number
+ CREATE FUNCTION dbo.fn_WordsToNumber_Cost (@input NVARCHAR(100))
+ RETURNS INT
+ AS
+ BEGIN DECLARE @result INT;
+   SET @result = CASE
+                  WHEN @input IS NULL THEN NULL
+				  WHEN UPPER (@input) ='ONE' THEN 1
+				  WHEN UPPER (@input) = 'TEN' THEN 10
+				  WHEN UPPER(@input) = 'FIFTY' THEN 50
+				  WHEN UPPER (@input) = 'HUNDRED' THEN 100
+				  WHEN UPPER (@input) = 'TWO HUNDRED' THEN 200 ----- it help see any words and automatically convert to number
+ELSE NULL
+END;
+RETURN @result
+END;
+GO '
+
+'------ updating the patient_record
+
+UPDATE patient_record
+ SET Cost_clean = CASE 
+            WHEN TRY_CAST (REPLACE(LTRIM(RTRIM(cost)), ',', '') AS decimal (10, 2)) IS NOT NULL
+			THEN TRY_CAST (REPLACE(LTRIM(RTRIM(cost)), ',', '') AS decimal (10, 2))
+            WHEN UPPER(LTRIM(RTRIM(cost))) IN ('free', 'error', 'missing') THEN NULL
+	ELSE dbo.fn_WordsToNumber_Cost(cost)
+END
+WHERE cost IS NOT NULL
+AND (Cost_clean IS NULL);
+GO '
+
+ '------ Checking the Cost rows to know how much of the data is messy.
+------- turn out we have 22,469 rows out  of 24928 rows valid data entered and 2,459 incorrect cost or missing data entered.
+
+SELECT 
+      SUM(CASE WHEN Cost_clean IS NOT NULL THEN 1 ELSE 0 END) AS Valid_cost_entered,
+	  SUM(CASE WHEN Cost_clean IS NULL THEN 1 ELSE 0 END) AS Nopayment_cost_entered
+FROM patient_record; '
+
+
+' ----- standardized and cleaning the Visit_date rows of patient_record
+ ALTER TABLE patient_record
+ ADD Visit_Date_clean DATE NULL; '
+
+' UPDATE patient_record
+ SET Visit_Date_clean = TRY_CAST(visit_date AS DATE)
+ WHERE visit_date IS NOT NULL
+ AND Visit_Date_clean IS NULL;'
+
+'----- Inspecting the data of the clean date 
+ SELECT TOP 500 Visit_Date_clean
+ FROM patient_record;'
+
+
+
+ 'ALTER TABLE patient_mapping
+ ADD patient_name_clean VARCHAR(50) NULL; '
+ 
+ ----- Create a function call propercase
+ 
+ CREATE FUNCTION dbo.fn_ProperCase (@input NVARCHAR(4000))
+RETURNS NVARCHAR(4000)
+AS
+BEGIN
+    DECLARE @output NVARCHAR(4000) = '';
+    DECLARE @i INT = 1;
+    DECLARE @len INT = LEN(@input);
+    DECLARE @ch NCHAR(1);
+    DECLARE @makeUpper BIT = 1;  -- first character of each word
+
+WHILE @i <= @len
+BEGIN
+SET @ch = SUBSTRING(@input, @i, 1);
+
+IF @ch LIKE '[A-Za-z]'
+BEGIN
+IF @makeUpper = 1
+SET @output += UPPER(@ch);
+ELSE
+SET @output += LOWER(@ch);
+
+SET @makeUpper = 0;
+END
+ELSE
+BEGIN
+-- non-letter (like space or hyphen) resets word
+SET @output += @ch;
+SET @makeUpper = 1;
+END
+SET @i += 1;
+END
+RETURN @output;
+END;
+GO
+----- standardized and cleaning the Visit_date rows of patient_record using the function propercase
+ UPDATE patient_mapping
+SET patient_name_clean = dbo.fn_ProperCase(patient_name)
+WHERE patient_name IS NOT NULL;
+
+ALTER TABLE Patient_mapping
+ ADD insurance_type_clean VARCHAR(50) NULL; 
+
+---- Cleaning the insurance type of all inconsistencies and character like
+ ------   Gov, PUBlic, privatte, None, N/A
+UPDATE patient_mapping
+SET insurance_type_clean =
+       CASE
+         WHEN LOWER(RTRIM(LTRIM(insurance_type))) IN ('privatte', 'private', 'priv') 
+              THEN 'Private'
+         WHEN LOWER(RTRIM(LTRIM(insurance_type))) IN ('Gov', 'govt', 'government') 
+              THEN 'Govt'
+         WHEN LOWER(RTRIM(LTRIM(insurance_type))) IN ('public', 'publc') 
+              THEN 'Public'
+         WHEN LOWER(RTRIM(LTRIM(insurance_type))) IN ('none', 'n/a', 'na') 
+              THEN 'Uninsured'
+         ELSE 'Other'
+       END 
+FROM patient_mapping;
+
+
+ 
+ 
+------ Updating the activity_date in the wellness activity of each patient 
+------  by creating a new column to extract the year, month and days.
+ ALTER TABLE wellness_activity
+ ADD activity_date_clean DATE NULL;
+
+ UPDATE wellness_activity
+ SET activity_date_clean= TRY_CAST(activity_date AS DATE)
+ WHERE activity_date IS NOT NULL
+ AND activity_date_clean IS NULL;
+ 
+ ------- Analyzing Monthly Trends of Flu Cases and Treatment Costs
+ -- Checking Monthly Flu Summary
+ SELECT YEAR(Visit_Date_Clean) AS [Year],
+        Month(Visit_Date_Clean) AS [Month],
+		DATENAME(Month, Visit_Date_Clean) AS Month_name,
+		Count(*) AS Total_Flu_Cases,
+		Sum(cost_clean) AS Totalt_Flu_Cost
+FROM patient_record
+WHERE diagnosis = 'Flu'
+GROUP BY YEAR(Visit_Date_Clean),
+        Month(Visit_Date_Clean),
+		DATENAME(Month, Visit_Date_Clean)
+ORDER BY [Year],  [Month];
+
+----- Total cases of Flu
+SELECT COUNT(*) AS TotalFluCases
+FROM patient_record
+WHERE LOWER(LTRIM(RTRIM(diagnosis))) = 'flu'
+union
+---- Total cost in the treatment of Flu
+
+SELECT 
+    SUM(Cost_Clean) AS TotalFluCost
+FROM patient_record
+WHERE LOWER(LTRIM(RTRIM(diagnosis))) = 'flu';
+
+
+
+----- Checking the month where we have high cases of Flu
+--- 2025 alone has about the highest cases in months like June,july, and August... 
+ ----- August having the highest cases with 22 total cases.
+
+SELECT TOP 5 [Year], [Month],Month_name, Total_Flu_Cases
+
+FROM  (
+
+      SELECT YEAR(Visit_Date_Clean) AS [Year],
+        Month(Visit_Date_Clean) AS [Month],
+		DATENAME(Month, Visit_Date_Clean) AS Month_name,
+		Count(*) AS Total_Flu_Cases
+FROM patient_record
+WHERE diagnosis = 'Flu'
+GROUP BY YEAR(Visit_Date_Clean),
+        Month(Visit_Date_Clean),
+		DATENAME(Month, Visit_Date_Clean))  monthly_cases_of_Flu
+ORDER BY Total_Flu_Cases DESC;
+
+----- Checking the top 5 peak  where we spent on Flu diagnosis
+------ In the month of April alone 5,859.88 being the highest Followed by August in year 2024
+
+SELECT TOP 5 [Year], [Month],Month_name,Totalt_Flu_Cost
+
+FROM  (
+
+      SELECT YEAR(Visit_Date_Clean) AS [Year],
+        Month(Visit_Date_Clean) AS [Month],
+		DATENAME(Month, Visit_Date_Clean) AS Month_name,
+		Sum(cost_clean) AS Totalt_Flu_Cost
+FROM patient_record
+WHERE diagnosis = 'Flu'
+GROUP BY YEAR(Visit_Date_Clean),
+        Month(Visit_Date_Clean),
+		DATENAME(Month, Visit_Date_Clean))  monthly_cases_of_Flu
+ORDER BY Totalt_Flu_Cost DESC;'
+
+
+
+ 
+ 
+
 
 
 
